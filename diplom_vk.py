@@ -1,11 +1,11 @@
 import requests
-from progressbar import *
+import progressbar
+import time
 
 #TOKEN = 'ed1271af9e8883f7a7c2cefbfddfcbc61563029666c487b2f71a5227cce0d1b533c4af4c5b888633c06ae'
 #USER_ID = '171691064'
 
-#TOKEN = '9784a84e76e1c8eaf7b7e4a54d75ac4bb2eb296ccdb5f4e7f1924165e5a1194587a49c41e79e03fc21e3e',
-TOKEN = 'bdbe014a9ff9d877803fd90bb214227c13fde8eadee31513d3972954f7f9d102d89453d20f41ccb839849'
+TOKEN = '8b40db0b45017cd032de26140c8a186ce1c32441b5b2a923776fda5ab34c933ac8c75006dc23e9324a3b4'
 USER_ID = '9297520'
 
 class UserVk:
@@ -19,7 +19,14 @@ class UserVk:
     def __query_vk__(self, items, url):
         # произвольный vk-запрос url с параметрами items
         #print(url.format(*items))
-        response = requests.get(url.format(*items), self.params).json()
+        response = None
+        while response is None:
+            try:
+                response = requests.get(url.format(*items), self.params).json()
+            except Exception as e:
+                print(e)
+                time.sleep(2)
+
         if response.get('error'):
             return response['error']
         elif response.get('response'):
@@ -63,7 +70,7 @@ class UserVk:
 
     @property
     def user_group(self):
-        return self.get_groups(self.id, 'name,members_count,invited_by')
+        return self.get_groups(self.id, 'name,members_count,invited_by', 'list')
 
     @property
     def user_friends(self):
@@ -72,27 +79,25 @@ class UserVk:
 
 main_user = UserVk(USER_ID, TOKEN)
 main_groups = main_user.user_group
-if not type(main_groups) is set:
-    print('Не могу получить список групп главного пользователя!', main_groups)
+if not type(main_groups) is set and not type(main_groups) is list:
+    print('Не могу получить список групп главного пользователя. Ошибка:', main_groups)
     exit(0)
 
 friends_groups = set()
-widgets = ['Test: ', Percentage(), ' ', Bar(marker='0',left='[',right=']'),
-           ' ', ETA(), ' ', FileTransferSpeed()] #see docs for other options
-pbar = ProgressBar(widgets=widgets, maxval=len(main_user.user_friends))
-pbar.start()
-
+bar = progressbar.ProgressBar(maxval=len(main_user.user_friends)).start()
 for idx, friend in enumerate(main_user.user_friends):
     group_set = main_user.get_groups(friend)
-    pbar.update(idx)
+    bar.update(idx)
     if type(group_set) is set:
         friends_groups.update(group_set)
 
-pbar.finish()
+bar.finish()
 
-unique_groups = main_groups.difference(friends_groups)
-print(unique_groups)
-unique_groups_info = [{'name': group['name'], 'gid': group['name']} for group in main_groups if group['id'] in unique_groups]
+
+print(main_groups)
+#unique_groups = main_groups.difference(friends_groups)
+#print(f'Группы, в которых состоит только пользователь {main_user.id}\n', unique_groups)
+#unique_groups_info = [{'name': group['name'], 'gid': group['name']} for group in main_groups]
 #print(unique_groups_info)
 
 
