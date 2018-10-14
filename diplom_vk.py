@@ -2,6 +2,7 @@ import requests
 import progressbar
 import time
 import json
+import sys
 
 #TOKEN = 'ed1271af9e8883f7a7c2cefbfddfcbc61563029666c487b2f71a5227cce0d1b533c4af4c5b888633c06ae'
 #USER_ID = '171691064'
@@ -88,11 +89,10 @@ if not type(main_groups) is set and not type(main_groups) is list:
 
 friends_groups = set()
 bar = progressbar.ProgressBar(maxval=len(main_friends),
-
+                              fd=sys.stdout,
                               widgets=['Информация о друзьях',
                                        progressbar.Bar(left='[', marker='-',right=']'),progressbar.Percentage()])\
                  .start()
-print('Получение информации о группах друзей...')
 for idx, friend in enumerate(main_friends):
     bar.update(idx)
     group_set = main_user.get_groups(friend)
