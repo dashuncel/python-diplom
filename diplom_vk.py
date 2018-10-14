@@ -1,11 +1,12 @@
 import requests
 import progressbar
 import time
+import json
 
 #TOKEN = 'ed1271af9e8883f7a7c2cefbfddfcbc61563029666c487b2f71a5227cce0d1b533c4af4c5b888633c06ae'
 #USER_ID = '171691064'
 
-TOKEN = '8b40db0b45017cd032de26140c8a186ce1c32441b5b2a923776fda5ab34c933ac8c75006dc23e9324a3b4'
+TOKEN = '19da8c6dce232885ee0d47afd2d0773f0d7e4bfad13fe11dd7c6c7c567ce60458b9fd04ebba685be4ea10'
 USER_ID = '9297520'
 
 class UserVk:
@@ -24,8 +25,8 @@ class UserVk:
             try:
                 response = requests.get(url.format(*items), self.params).json()
             except Exception as e:
-                print(e)
-                time.sleep(2)
+                print('Ошибка обращения к API VK:', e)
+                time.sleep(5)
 
         if response.get('error'):
             return response['error']
@@ -70,7 +71,7 @@ class UserVk:
 
     @property
     def user_group(self):
-        return self.get_groups(self.id, 'name,members_count,invited_by', 'list')
+        return self.get_groups(self.id, 'name,members_count', 'list')
 
     @property
     def user_friends(self):
@@ -79,26 +80,40 @@ class UserVk:
 
 main_user = UserVk(USER_ID, TOKEN)
 main_groups = main_user.user_group
+main_friends = main_user.user_friends
+
 if not type(main_groups) is set and not type(main_groups) is list:
-    print('Не могу получить список групп главного пользователя. Ошибка:', main_groups)
+    print(f'Не могу получить список групп главного пользователя. Ошибка:{main_groups}')
     exit(0)
 
 friends_groups = set()
-bar = progressbar.ProgressBar(maxval=len(main_user.user_friends)).start()
-for idx, friend in enumerate(main_user.user_friends):
-    group_set = main_user.get_groups(friend)
+bar = progressbar.ProgressBar(maxval=len(main_friends),
+
+                              widgets=['Информация о друзьях',
+                                       progressbar.Bar(left='[', marker='-',right=']'),progressbar.Percentage()])\
+                 .start()
+print('Получение информации о группах друзей...')
+for idx, friend in enumerate(main_friends):
     bar.update(idx)
+    group_set = main_user.get_groups(friend)
     if type(group_set) is set:
         friends_groups.update(group_set)
-
 bar.finish()
 
+if not main_groups is set:
+    main_groups_set = set(grp['id'] for grp in main_groups)
+else:
+    main_groups_set = main_groups
 
-print(main_groups)
-#unique_groups = main_groups.difference(friends_groups)
-#print(f'Группы, в которых состоит только пользователь {main_user.id}\n', unique_groups)
-#unique_groups_info = [{'name': group['name'], 'gid': group['name']} for group in main_groups]
-#print(unique_groups_info)
+unique_groups = main_groups_set.difference(friends_groups)
+unique_groups_info = [{'name': group['name'], 'gid': group['id'], 'members_count': group['members_count']}
+                    for group in main_groups if group['id'] in unique_groups]
+print(f'Группы, в которых состоит только пользователь {main_user.id}\n', unique_groups_info)
 
+with open('groups.json', 'w', encoding='utf-8') as f:
+    try:
+        json.dump(unique_groups_info, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f'Ошибка записи в файл {e}')
 
 
